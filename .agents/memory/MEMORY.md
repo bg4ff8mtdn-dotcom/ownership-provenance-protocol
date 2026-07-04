@@ -1,0 +1,2 @@
+- [Express sub-router path doubling](express-subrouter-paths.md) — mounting a router with `app.use("/x", r)` requires routes inside `r` to be defined at `"/"`, not `"/x"` again, or requests 404.
+- [MCP Streamable HTTP setup in this repo](mcp-streamable-http.md) — stateless transport pattern, auth placement, and REST/MCP shared-service-layer convention for `@workspace/api-server`.
