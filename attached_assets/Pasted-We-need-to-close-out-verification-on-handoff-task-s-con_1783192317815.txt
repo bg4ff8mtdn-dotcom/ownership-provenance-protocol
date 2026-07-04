@@ -1,0 +1,43 @@
+We need to close out verification on handoff_task's context_snapshot before
+moving on. Two things to test — do not change any code yet, test first and
+report back:
+
+TEST 1 — Empty-state snapshot:
+Create a brand-new task via create_task. Do NOT accept it and do NOT report
+any completion on it. Immediately call handoff_task on this task (any
+from_actor_id/to_actor_id). Show me the resulting context_snapshot exactly
+as stored in the database.
+
+Expected: the snapshot should still be created successfully, with something
+like latestAcceptance: null and latestCompletion: null (or an equivalent
+explicit "none yet" representation) — NOT an error, NOT a snapshot that's
+silently missing those fields, and NOT a malformed/empty object.
+
+If it errors out, or produces something malformed, or silently omits the
+fields instead of representing them as null/none — that's a real bug. Fix
+it so the snapshot always includes explicit acceptance/completion state,
+even when there is none yet.
+
+TEST 2 — Frozen copy vs. live reference:
+Take a task that already has an acceptance and a completion on it (like the
+one from the last test). Call handoff_task on it and note the
+context_snapshot's captured values. Now, directly in the database, manually
+update the original task_acceptances or task_completions row for that task
+(e.g., change the context_note text or claim_text to something different).
+Then re-fetch the already-stored context_snapshot from the handoff you
+created earlier.
+
+Expected: the stored snapshot should still show the OLD values — the ones
+that existed at the moment of the handoff — not the new ones you just wrote
+to the source rows. If the snapshot's stored values changed to match your
+manual edit, that means it's storing a reference/pointer instead of a true
+copy, which is a real bug: it defeats the entire purpose of a snapshot
+protecting historical context from later changes.
+
+If this is broken, the fix is to ensure context_snapshot stores a fully
+independent copy of the relevant data at write time (e.g., serialize the
+actual values into the jsonb column, not an id or reference that gets
+re-resolved later).
+
+Report back exactly what you found for both tests before I decide what to
+do next.
