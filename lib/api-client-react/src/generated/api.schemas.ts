@@ -115,3 +115,18 @@ export interface TaskHandoff {
   contextSnapshot: TaskHandoffContextSnapshot;
 }
 
+export interface UnacceptedTasksList {
+  tasks: Task[];
+}
+
+export interface TaskStatusResponse {
+  task: Task;
+  acceptance: TaskAcceptance | null;
+  completions: TaskCompletion[];
+  handoffs: TaskHandoff[];
+}
+
+export type ListUnacceptedTasksParams = {
+actorId?: string;
+};
+

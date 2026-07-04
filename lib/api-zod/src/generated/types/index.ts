@@ -8,6 +8,7 @@
 
 export * from './errorResponse';
 export * from './healthStatus';
+export * from './listUnacceptedTasksParams';
 export * from './provenance';
 export * from './task';
 export * from './taskAcceptance';
@@ -19,3 +20,5 @@ export * from './taskHandoffContextSnapshot';
 export * from './taskHandoffInput';
 export * from './taskInput';
 export * from './taskStatus';
+export * from './taskStatusResponse';
+export * from './unacceptedTasksList';

@@ -22,6 +22,7 @@ import type {
 import type {
   ErrorResponse,
   HealthStatus,
+  ListUnacceptedTasksParams,
   Task,
   TaskAcceptance,
   TaskAcceptanceInput,
@@ -29,7 +30,9 @@ import type {
   TaskCompletionInput,
   TaskHandoff,
   TaskHandoffInput,
-  TaskInput
+  TaskInput,
+  TaskStatusResponse,
+  UnacceptedTasksList
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -423,4 +426,167 @@ export const useHandoffTask = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getHandoffTaskMutationOptions(options));
     }
+
+export const getListUnacceptedTasksUrl = (params?: ListUnacceptedTasksParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tasks/unaccepted?${stringifiedParams}` : `/api/tasks/unaccepted`
+}
+
+/**
+ * Returns all tasks with no task_acceptances row at all, optionally filtered to tasks injected for one specific actor.
+ * @summary List all tasks with no acceptance record
+ */
+export const listUnacceptedTasks = async (params?: ListUnacceptedTasksParams, options?: RequestInit): Promise<UnacceptedTasksList> => {
+
+  return customFetch<UnacceptedTasksList>(getListUnacceptedTasksUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUnacceptedTasksQueryKey = (params?: ListUnacceptedTasksParams,) => {
+    return [
+    `/api/tasks/unaccepted`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListUnacceptedTasksQueryOptions = <TData = Awaited<ReturnType<typeof listUnacceptedTasks>>, TError = ErrorType<unknown>>(params?: ListUnacceptedTasksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUnacceptedTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUnacceptedTasksQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUnacceptedTasks>>> = ({ signal }) => listUnacceptedTasks(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUnacceptedTasks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListUnacceptedTasksQueryResult = NonNullable<Awaited<ReturnType<typeof listUnacceptedTasks>>>
+export type ListUnacceptedTasksQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all tasks with no acceptance record
+ */
+
+export function useListUnacceptedTasks<TData = Awaited<ReturnType<typeof listUnacceptedTasks>>, TError = ErrorType<unknown>>(
+ params?: ListUnacceptedTasksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUnacceptedTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListUnacceptedTasksQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetTaskStatusUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/status`
+}
+
+/**
+ * Returns injection details, the acceptance record (or an explicit null if none exists), every completion claim, and every handoff (with its context snapshot) for one task.
+ * @summary Get the complete history for one task
+ */
+export const getTaskStatus = async (taskId: string, options?: RequestInit): Promise<TaskStatusResponse> => {
+
+  return customFetch<TaskStatusResponse>(getGetTaskStatusUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskStatusQueryKey = (taskId: string,) => {
+    return [
+    `/api/tasks/${taskId}/status`
+    ] as const;
+    }
+
+
+export const getGetTaskStatusQueryOptions = <TData = Awaited<ReturnType<typeof getTaskStatus>>, TError = ErrorType<ErrorResponse>>(taskId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskStatusQueryKey(taskId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskStatus>>> = ({ signal }) => getTaskStatus(taskId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: taskId !== null && taskId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskStatus>>>
+export type GetTaskStatusQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the complete history for one task
+ */
+
+export function useGetTaskStatus<TData = Awaited<ReturnType<typeof getTaskStatus>>, TError = ErrorType<ErrorResponse>>(
+ taskId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskStatusQueryOptions(taskId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

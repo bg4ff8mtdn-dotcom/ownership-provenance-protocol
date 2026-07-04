@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import {
   db,
   tasksTable,
@@ -20,6 +20,10 @@ import {
   HandoffTaskParams,
   HandoffTaskBody,
   HandoffTaskResponse,
+  ListUnacceptedTasksQueryParams,
+  ListUnacceptedTasksResponse,
+  GetTaskStatusParams,
+  GetTaskStatusResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -270,6 +274,72 @@ router.post("/tasks/:taskId/handoff", async (req, res): Promise<void> => {
   }
 
   res.status(201).json(HandoffTaskResponse.parse(handoff));
+});
+
+router.get("/tasks/unaccepted", async (req, res): Promise<void> => {
+  const query = ListUnacceptedTasksQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: query.error.message });
+    return;
+  }
+
+  const { actorId } = query.data;
+
+  const rows = await db
+    .select({ task: tasksTable })
+    .from(tasksTable)
+    .leftJoin(taskAcceptancesTable, eq(taskAcceptancesTable.taskId, tasksTable.id))
+    .where(
+      actorId
+        ? and(isNull(taskAcceptancesTable.id), eq(tasksTable.injectedBy, actorId))
+        : isNull(taskAcceptancesTable.id),
+    );
+
+  const tasks = rows.map((row) => row.task);
+
+  res.status(200).json(ListUnacceptedTasksResponse.parse({ tasks }));
+});
+
+router.get("/tasks/:taskId/status", async (req, res): Promise<void> => {
+  const params = GetTaskStatusParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const { taskId } = params.data;
+
+  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, taskId));
+  if (!task) {
+    res.status(404).json({ error: `Task ${taskId} not found` });
+    return;
+  }
+
+  const [acceptance] = await db
+    .select()
+    .from(taskAcceptancesTable)
+    .where(eq(taskAcceptancesTable.taskId, taskId));
+
+  const completions = await db
+    .select()
+    .from(taskCompletionsTable)
+    .where(eq(taskCompletionsTable.taskId, taskId))
+    .orderBy(taskCompletionsTable.reportedAt);
+
+  const handoffs = await db
+    .select()
+    .from(taskHandoffsTable)
+    .where(eq(taskHandoffsTable.taskId, taskId))
+    .orderBy(taskHandoffsTable.handoffAt);
+
+  res.status(200).json(
+    GetTaskStatusResponse.parse({
+      task,
+      acceptance: acceptance ?? null,
+      completions,
+      handoffs,
+    }),
+  );
 });
 
 export default router;

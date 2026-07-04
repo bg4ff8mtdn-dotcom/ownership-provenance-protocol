@@ -127,3 +127,70 @@ export const HandoffTaskResponse = zod.object({
 })
 
 
+/**
+ * Returns all tasks with no task_acceptances row at all, optionally filtered to tasks injected for one specific actor.
+ * @summary List all tasks with no acceptance record
+ */
+export const ListUnacceptedTasksQueryParams = zod.object({
+  "actorId": zod.coerce.string().optional()
+})
+
+export const ListUnacceptedTasksResponse = zod.object({
+  "tasks": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "injectedBy": zod.string(),
+  "authorityScope": zod.string().nullable(),
+  "status": zod.enum(['pending_acceptance', 'accepted', 'in_progress', 'completed', 'transitioned', 'expired']),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * Returns injection details, the acceptance record (or an explicit null if none exists), every completion claim, and every handoff (with its context snapshot) for one task.
+ * @summary Get the complete history for one task
+ */
+export const GetTaskStatusParams = zod.object({
+  "taskId": zod.coerce.string().uuid()
+})
+
+export const GetTaskStatusResponse = zod.object({
+  "task": zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "injectedBy": zod.string(),
+  "authorityScope": zod.string().nullable(),
+  "status": zod.enum(['pending_acceptance', 'accepted', 'in_progress', 'completed', 'transitioned', 'expired']),
+  "createdAt": zod.coerce.date()
+}),
+  "acceptance": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "taskId": zod.string().uuid(),
+  "actorId": zod.string(),
+  "acceptedAt": zod.coerce.date(),
+  "contextNote": zod.string().nullable()
+}),zod.null()]),
+  "completions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "taskId": zod.string().uuid(),
+  "actorId": zod.string(),
+  "provenance": zod.enum(['observed', 'reviewed', 'reported']),
+  "claimText": zod.string(),
+  "sourceReference": zod.string().nullable(),
+  "reportedAt": zod.coerce.date()
+})),
+  "handoffs": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "taskId": zod.string().uuid(),
+  "fromActorId": zod.string().nullable(),
+  "toActorId": zod.string(),
+  "handoffAt": zod.coerce.date(),
+  "reason": zod.string().nullable(),
+  "contextSnapshot": zod.record(zod.string(), zod.unknown())
+}))
+})
+
+
