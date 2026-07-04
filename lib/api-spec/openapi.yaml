@@ -443,6 +443,7 @@ components:
         - task
         - acceptance
         - completions
+        - latestCompletion
         - handoffs
       properties:
         task:
@@ -452,9 +453,24 @@ components:
             - $ref: "#/components/schemas/TaskAcceptance"
             - type: "null"
         completions:
+          description: >-
+            Full historical log of every completion claim ever reported for
+            this task, in chronological order. Multiple completions on the
+            same task are allowed by design (e.g. a corrected,
+            better-verified claim superseding an earlier one) — this array
+            is never truncated or overwritten.
           type: array
           items:
             $ref: "#/components/schemas/TaskCompletion"
+        latestCompletion:
+          description: >-
+            The most recently reported completion claim (by reportedAt),
+            or null if the task has never been completed. This is the
+            claim that currently applies; everything else in `completions`
+            is historical context.
+          oneOf:
+            - $ref: "#/components/schemas/TaskCompletion"
+            - type: "null"
         handoffs:
           type: array
           items:

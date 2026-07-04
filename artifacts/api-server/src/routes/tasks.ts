@@ -378,6 +378,12 @@ router.get("/tasks/:taskId/status", async (req, res): Promise<void> => {
     .where(eq(taskCompletionsTable.taskId, taskId))
     .orderBy(taskCompletionsTable.reportedAt);
 
+  // completions is chronological; the currently-applicable claim is simply
+  // the last one reported. Kept as a distinct field rather than inferred
+  // by callers, since multiple completions per task are allowed by design
+  // (e.g. a corrected, better-verified claim superseding an earlier one).
+  const latestCompletion = completions.length > 0 ? completions[completions.length - 1] : null;
+
   const handoffs = await db
     .select()
     .from(taskHandoffsTable)
@@ -389,6 +395,7 @@ router.get("/tasks/:taskId/status", async (req, res): Promise<void> => {
       task,
       acceptance: acceptance ?? null,
       completions,
+      latestCompletion,
       handoffs,
     }),
   );

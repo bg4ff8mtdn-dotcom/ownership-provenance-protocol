@@ -184,7 +184,16 @@ export const GetTaskStatusResponse = zod.object({
   "claimText": zod.string(),
   "sourceReference": zod.string().nullable(),
   "reportedAt": zod.coerce.date()
-})),
+})).describe('Full historical log of every completion claim ever reported for this task, in chronological order. Multiple completions on the same task are allowed by design (e.g. a corrected, better-verified claim superseding an earlier one) — this array is never truncated or overwritten.'),
+  "latestCompletion": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "taskId": zod.string().uuid(),
+  "actorId": zod.string(),
+  "provenance": zod.enum(['observed', 'reviewed', 'reported']),
+  "claimText": zod.string(),
+  "sourceReference": zod.string().nullable(),
+  "reportedAt": zod.coerce.date()
+}),zod.null()]).describe('The most recently reported completion claim (by reportedAt), or null if the task has never been completed. This is the claim that currently applies; everything else in `completions` is historical context.'),
   "handoffs": zod.array(zod.object({
   "id": zod.string().uuid(),
   "taskId": zod.string().uuid(),
