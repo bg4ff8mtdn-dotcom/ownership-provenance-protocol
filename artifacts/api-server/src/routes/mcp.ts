@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createTaskMcpServer } from "../mcp/tools";
-import { mcpAuth } from "../middlewares/mcpAuth";
+import { bearerAuth } from "../middlewares/bearerAuth";
 
 const router: IRouter = Router();
 
@@ -9,7 +9,7 @@ const router: IRouter = Router();
 // down when the response closes. This is a thin translation layer with no
 // server-side session state to maintain, so statelessness keeps this simple
 // and avoids leaking connections across requests.
-router.post("/", mcpAuth, async (req, res): Promise<void> => {
+router.post("/", bearerAuth, async (req, res): Promise<void> => {
   const server = createTaskMcpServer();
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 
@@ -27,11 +27,11 @@ router.post("/", mcpAuth, async (req, res): Promise<void> => {
 // there is no long-lived session to stream from or terminate, so those
 // methods are not meaningful here — reject them explicitly rather than
 // silently accepting requests the transport can't fulfill.
-router.get("/", mcpAuth, (_req, res): void => {
+router.get("/", bearerAuth, (_req, res): void => {
   res.status(405).json({ error: "Method not allowed in stateless MCP mode" });
 });
 
-router.delete("/", mcpAuth, (_req, res): void => {
+router.delete("/", bearerAuth, (_req, res): void => {
   res.status(405).json({ error: "Method not allowed in stateless MCP mode" });
 });
 
