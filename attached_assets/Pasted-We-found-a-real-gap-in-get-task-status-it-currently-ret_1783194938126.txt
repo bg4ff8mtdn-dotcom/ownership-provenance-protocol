@@ -1,0 +1,38 @@
+We found a real gap in get_task_status: it currently returns only the single
+latest acceptance record, not the full acceptance history. Now that
+re-acceptance after a handoff is legitimate (multiple task_acceptances rows
+per task, by design), this loses history — e.g. if a task was accepted by
+human:you, handed off, then re-accepted by agent:replit-session, this
+endpoint only shows the second acceptance; the first is invisible.
+
+Fix this the same way completions was already fixed:
+
+1. In the /tasks/:taskId/status route, query ALL acceptance rows for the
+   task (ordered chronologically by acceptedAt), not just the latest one via
+   limit(1).
+2. Return both: an `acceptances` array (the full history, mirroring how
+   `completions` already works) and a `latestAcceptance` field (the most
+   recent one, mirroring `latestCompletion`).
+3. Update the OpenAPI spec (lib/api-spec/openapi.yaml) to reflect this new
+   response shape, and regenerate the API client/Zod types
+   (pnpm --filter @workspace/api-spec run codegen) so nothing is left
+   out of sync.
+4. IMPORTANT: check whether the MCP server's get_task_status tool calls this
+   same route/shares this same logic, or whether it independently formats
+   its own response. If the MCP tool has its own duplicated
+   response-shaping code rather than calling the same underlying function,
+   fix it there too — do not let the REST API and the MCP tool return two
+   different shapes for the same data.
+
+Verification before calling this done:
+- Create a task, accept it as human:you, hand it off, re-accept it as
+  agent:replit-session. Call get_task_status (via the REST route) and
+  confirm BOTH acceptance rows appear in the `acceptances` array, with
+  `latestAcceptance` correctly pointing at the second one.
+- Then call the equivalent MCP tool (get_task_status) on the same task and
+  confirm it returns the identical information — both acceptances visible,
+  not just the latest.
+- Show me both results side by side so I can confirm they match.
+
+Do not mark this done until both the REST endpoint and the MCP tool are
+verified independently to return full history.

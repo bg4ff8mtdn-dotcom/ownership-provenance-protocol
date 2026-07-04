@@ -151,7 +151,7 @@ export const ListUnacceptedTasksResponse = zod.object({
 
 
 /**
- * Returns injection details (including the task's current owner, if any), the most recent acceptance record (or an explicit null if none exists), every completion claim, and every handoff (with its context snapshot) for one task.
+ * Returns injection details (including the task's current owner, if any), every acceptance record plus the most recent one, every completion claim plus the most recent one, and every handoff (with its context snapshot) for one task.
  * @summary Get the complete history for one task
  */
 export const GetTaskStatusParams = zod.object({
@@ -169,13 +169,20 @@ export const GetTaskStatusResponse = zod.object({
   "currentOwnerActorId": zod.string().nullable().describe('The actor who currently holds accepted ownership of this task, or null if no one currently does (never accepted yet, or handed off and not yet re-accepted).'),
   "createdAt": zod.coerce.date()
 }),
-  "acceptance": zod.union([zod.object({
+  "acceptances": zod.array(zod.object({
   "id": zod.string().uuid(),
   "taskId": zod.string().uuid(),
   "actorId": zod.string(),
   "acceptedAt": zod.coerce.date(),
   "contextNote": zod.string().nullable()
-}),zod.null()]),
+})).describe('Full historical log of every acceptance record ever created for this task, in chronological order. Re-acceptance after a handoff is legitimate and creates a new row, so a task can have multiple acceptances over its lifetime — this array is never truncated or overwritten.'),
+  "latestAcceptance": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "taskId": zod.string().uuid(),
+  "actorId": zod.string(),
+  "acceptedAt": zod.coerce.date(),
+  "contextNote": zod.string().nullable()
+}),zod.null()]).describe('The most recently created acceptance record (by acceptedAt), or null if the task has never been accepted. This is the acceptance that currently applies; everything else in `acceptances` is historical context.'),
   "completions": zod.array(zod.object({
   "id": zod.string().uuid(),
   "taskId": zod.string().uuid(),

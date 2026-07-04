@@ -521,7 +521,7 @@ export const getGetTaskStatusUrl = (taskId: string,) => {
 }
 
 /**
- * Returns injection details (including the task's current owner, if any), the most recent acceptance record (or an explicit null if none exists), every completion claim, and every handoff (with its context snapshot) for one task.
+ * Returns injection details (including the task's current owner, if any), every acceptance record plus the most recent one, every completion claim plus the most recent one, and every handoff (with its context snapshot) for one task.
  * @summary Get the complete history for one task
  */
 export const getTaskStatus = async (taskId: string, options?: RequestInit): Promise<TaskStatusResponse> => {

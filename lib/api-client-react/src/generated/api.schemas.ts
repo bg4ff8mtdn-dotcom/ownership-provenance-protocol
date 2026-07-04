@@ -126,7 +126,10 @@ export interface UnacceptedTasksList {
 
 export interface TaskStatusResponse {
   task: Task;
-  acceptance: TaskAcceptance | null;
+  /** Full historical log of every acceptance record ever created for this task, in chronological order. Re-acceptance after a handoff is legitimate and creates a new row, so a task can have multiple acceptances over its lifetime — this array is never truncated or overwritten. */
+  acceptances: TaskAcceptance[];
+  /** The most recently created acceptance record (by acceptedAt), or null if the task has never been accepted. This is the acceptance that currently applies; everything else in `acceptances` is historical context. */
+  latestAcceptance: TaskAcceptance | null;
   /** Full historical log of every completion claim ever reported for this task, in chronological order. Multiple completions on the same task are allowed by design (e.g. a corrected, better-verified claim superseding an earlier one) — this array is never truncated or overwritten. */
   completions: TaskCompletion[];
   /** The most recently reported completion claim (by reportedAt), or null if the task has never been completed. This is the claim that currently applies; everything else in `completions` is historical context. */

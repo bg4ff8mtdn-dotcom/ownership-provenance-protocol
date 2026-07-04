@@ -304,12 +304,18 @@ export async function getTaskStatus(taskId: string) {
     return fail(404, `Task ${taskId} not found`);
   }
 
-  const [acceptance] = await db
+  const acceptances = await db
     .select()
     .from(taskAcceptancesTable)
     .where(eq(taskAcceptancesTable.taskId, taskId))
-    .orderBy(desc(taskAcceptancesTable.acceptedAt))
-    .limit(1);
+    .orderBy(taskAcceptancesTable.acceptedAt);
+
+  // acceptances is chronological; the currently-applicable acceptance is
+  // simply the last one created. Kept as a distinct field rather than
+  // inferred by callers, mirroring latestCompletion below — re-acceptance
+  // after a handoff is legitimate and creates a new row, so a task can
+  // have multiple acceptances over its lifetime.
+  const latestAcceptance = acceptances.length > 0 ? acceptances[acceptances.length - 1] : null;
 
   const completions = await db
     .select()
@@ -331,7 +337,8 @@ export async function getTaskStatus(taskId: string) {
 
   return ok(200, {
     task,
-    acceptance: acceptance ?? null,
+    acceptances,
+    latestAcceptance,
     completions,
     latestCompletion,
     handoffs,

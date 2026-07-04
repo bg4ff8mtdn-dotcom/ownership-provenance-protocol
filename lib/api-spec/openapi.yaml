@@ -203,9 +203,9 @@ paths:
       summary: Get the complete history for one task
       description: >-
         Returns injection details (including the task's current owner, if
-        any), the most recent acceptance record (or an explicit null if
-        none exists), every completion claim, and every handoff (with its
-        context snapshot) for one task.
+        any), every acceptance record plus the most recent one, every
+        completion claim plus the most recent one, and every handoff (with
+        its context snapshot) for one task.
       parameters:
         - name: taskId
           in: path
@@ -441,14 +441,30 @@ components:
       type: object
       required:
         - task
-        - acceptance
+        - acceptances
+        - latestAcceptance
         - completions
         - latestCompletion
         - handoffs
       properties:
         task:
           $ref: "#/components/schemas/Task"
-        acceptance:
+        acceptances:
+          description: >-
+            Full historical log of every acceptance record ever created for
+            this task, in chronological order. Re-acceptance after a
+            handoff is legitimate and creates a new row, so a task can have
+            multiple acceptances over its lifetime — this array is never
+            truncated or overwritten.
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskAcceptance"
+        latestAcceptance:
+          description: >-
+            The most recently created acceptance record (by acceptedAt), or
+            null if the task has never been accepted. This is the
+            acceptance that currently applies; everything else in
+            `acceptances` is historical context.
           oneOf:
             - $ref: "#/components/schemas/TaskAcceptance"
             - type: "null"
