@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import mcpRouter from "./routes/mcp";
+import wellKnownRouter from "./routes/wellKnown";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -32,5 +33,6 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 app.use("/mcp", mcpRouter);
+app.use("/.well-known", wellKnownRouter);
 
 export default app;
