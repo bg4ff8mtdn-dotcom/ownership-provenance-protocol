@@ -1,0 +1,16 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.bg4ff8mtdn-dotcom/ownership-provenance-protocol",
+  "description": "MCP protocol enforcing explicit task acceptance and mandatory provenance tags on completion claims. This is a reference deployment for testing and demonstration — it requires a bearer token only the maintainer holds, and does not offer public sign-up or shared access. To actually use this protocol, deploy your own copy: clone the repo, set your own MCP_ACCESS_TOKEN, and point your MCP client at your own instance. See the README for setup instructions.",
+  "repository": {
+    "url": "https://github.com/bg4ff8mtdn-dotcom/ownership-provenance-protocol",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://ownership-provenance-protocol.replit.app/mcp"
+    }
+  ]
+}
