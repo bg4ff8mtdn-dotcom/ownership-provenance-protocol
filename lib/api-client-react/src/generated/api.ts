@@ -443,8 +443,8 @@ export const getListUnacceptedTasksUrl = (params?: ListUnacceptedTasksParams,) =
 }
 
 /**
- * Returns all tasks with no task_acceptances row at all, optionally filtered to tasks injected for one specific actor.
- * @summary List all tasks with no acceptance record
+ * Returns all tasks with no current owner (currentOwnerActorId is null) — either never accepted, or handed off and not yet re-accepted — optionally filtered to tasks injected for one specific actor.
+ * @summary List all tasks with no current owner
  */
 export const listUnacceptedTasks = async (params?: ListUnacceptedTasksParams, options?: RequestInit): Promise<UnacceptedTasksList> => {
 
@@ -491,7 +491,7 @@ export type ListUnacceptedTasksQueryError = ErrorType<unknown>
 
 
 /**
- * @summary List all tasks with no acceptance record
+ * @summary List all tasks with no current owner
  */
 
 export function useListUnacceptedTasks<TData = Awaited<ReturnType<typeof listUnacceptedTasks>>, TError = ErrorType<unknown>>(
@@ -521,7 +521,7 @@ export const getGetTaskStatusUrl = (taskId: string,) => {
 }
 
 /**
- * Returns injection details, the acceptance record (or an explicit null if none exists), every completion claim, and every handoff (with its context snapshot) for one task.
+ * Returns injection details (including the task's current owner, if any), the most recent acceptance record (or an explicit null if none exists), every completion claim, and every handoff (with its context snapshot) for one task.
  * @summary Get the complete history for one task
  */
 export const getTaskStatus = async (taskId: string, options?: RequestInit): Promise<TaskStatusResponse> => {

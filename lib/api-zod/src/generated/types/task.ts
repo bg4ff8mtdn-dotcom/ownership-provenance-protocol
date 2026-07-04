@@ -15,5 +15,10 @@ export interface Task {
   /** @nullable */
   authorityScope: string | null;
   status: TaskStatus;
+  /**
+     * The actor who currently holds accepted ownership of this task, or null if no one currently does (never accepted yet, or handed off and not yet re-accepted).
+     * @nullable
+     */
+  currentOwnerActorId: string | null;
   createdAt: Date;
 }

@@ -39,6 +39,7 @@ export const CreateTaskResponse = zod.object({
   "injectedBy": zod.string(),
   "authorityScope": zod.string().nullable(),
   "status": zod.enum(['pending_acceptance', 'accepted', 'in_progress', 'completed', 'transitioned', 'expired']),
+  "currentOwnerActorId": zod.string().nullable().describe('The actor who currently holds accepted ownership of this task, or null if no one currently does (never accepted yet, or handed off and not yet re-accepted).'),
   "createdAt": zod.coerce.date()
 })
 
@@ -128,8 +129,8 @@ export const HandoffTaskResponse = zod.object({
 
 
 /**
- * Returns all tasks with no task_acceptances row at all, optionally filtered to tasks injected for one specific actor.
- * @summary List all tasks with no acceptance record
+ * Returns all tasks with no current owner (currentOwnerActorId is null) — either never accepted, or handed off and not yet re-accepted — optionally filtered to tasks injected for one specific actor.
+ * @summary List all tasks with no current owner
  */
 export const ListUnacceptedTasksQueryParams = zod.object({
   "actorId": zod.coerce.string().optional()
@@ -143,13 +144,14 @@ export const ListUnacceptedTasksResponse = zod.object({
   "injectedBy": zod.string(),
   "authorityScope": zod.string().nullable(),
   "status": zod.enum(['pending_acceptance', 'accepted', 'in_progress', 'completed', 'transitioned', 'expired']),
+  "currentOwnerActorId": zod.string().nullable().describe('The actor who currently holds accepted ownership of this task, or null if no one currently does (never accepted yet, or handed off and not yet re-accepted).'),
   "createdAt": zod.coerce.date()
 }))
 })
 
 
 /**
- * Returns injection details, the acceptance record (or an explicit null if none exists), every completion claim, and every handoff (with its context snapshot) for one task.
+ * Returns injection details (including the task's current owner, if any), the most recent acceptance record (or an explicit null if none exists), every completion claim, and every handoff (with its context snapshot) for one task.
  * @summary Get the complete history for one task
  */
 export const GetTaskStatusParams = zod.object({
@@ -164,6 +166,7 @@ export const GetTaskStatusResponse = zod.object({
   "injectedBy": zod.string(),
   "authorityScope": zod.string().nullable(),
   "status": zod.enum(['pending_acceptance', 'accepted', 'in_progress', 'completed', 'transitioned', 'expired']),
+  "currentOwnerActorId": zod.string().nullable().describe('The actor who currently holds accepted ownership of this task, or null if no one currently does (never accepted yet, or handed off and not yet re-accepted).'),
   "createdAt": zod.coerce.date()
 }),
   "acceptance": zod.union([zod.object({

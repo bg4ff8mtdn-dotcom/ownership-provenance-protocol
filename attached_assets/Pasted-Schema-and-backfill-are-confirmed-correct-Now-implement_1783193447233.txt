@@ -1,0 +1,48 @@
+Schema and backfill are confirmed correct. Now implement the ownership
+enforcement in accept_task, handoff_task, and report_completion.
+
+CRITICAL REQUIREMENT — do not skip this: accept_task's ownership check must
+be a single atomic database operation, not a separate read-then-write. Use
+something like:
+
+  UPDATE tasks SET current_owner_actor_id = $actor_id
+  WHERE id = $task_id AND current_owner_actor_id IS NULL
+
+...and check that exactly one row was affected. If zero rows were affected,
+reject the call — either the task doesn't exist, or someone already holds
+current ownership. This preserves the same race-condition-proof guarantee
+that the old unique constraint gave us in Phase 3 — do not implement this as
+"check current_owner_actor_id, then separately write it," since that
+reintroduces a race between two actors accepting at the same moment.
+
+1. accept_task: on success (per the atomic check above), also insert a row
+   into task_acceptances as before, for the historical log. Reject clearly
+   if current_owner_actor_id is already set to a different actor.
+
+2. handoff_task: MUST verify from_actor_id matches the task's current
+   current_owner_actor_id exactly before proceeding — reject with a clear
+   error otherwise. On success, set current_owner_actor_id to null (the
+   recipient does not automatically become owner).
+
+3. report_completion: MUST verify the calling actor_id matches the task's
+   current current_owner_actor_id. If current_owner_actor_id is null,
+   reject the call — there's no current owner to attribute the completion
+   to.
+
+After implementing, re-run exactly these tests and report back:
+- TEST A again: from_actor_id that never held current ownership attempting
+  a handoff — must now be rejected.
+- TEST B again: actor_C receiving a handoff, then attempting
+  report_completion or a further handoff WITHOUT calling accept_task first
+  — must now be rejected.
+- NEW TEST: after a legitimate handoff clears current_owner_actor_id, the
+  recipient calls accept_task and it succeeds, and only after that can they
+  call report_completion or hand it off again.
+- NEW TEST: two different actors attempt to accept_task the same
+  just-freed (current_owner_actor_id = null) task at the same time
+  (concurrent, not sequential) — confirm only one succeeds, verified
+  against the database, the same way we proved this for the original
+  Phase 3 guarantee.
+
+Do not mark this done until all four pass with database-level verification,
+not just API responses.

@@ -177,10 +177,12 @@ paths:
     get:
       operationId: listUnacceptedTasks
       tags: [tasks]
-      summary: List all tasks with no acceptance record
+      summary: List all tasks with no current owner
       description: >-
-        Returns all tasks with no task_acceptances row at all, optionally
-        filtered to tasks injected for one specific actor.
+        Returns all tasks with no current owner (currentOwnerActorId is
+        null) — either never accepted, or handed off and not yet
+        re-accepted — optionally filtered to tasks injected for one
+        specific actor.
       parameters:
         - name: actorId
           in: query
@@ -200,9 +202,10 @@ paths:
       tags: [tasks]
       summary: Get the complete history for one task
       description: >-
-        Returns injection details, the acceptance record (or an explicit
-        null if none exists), every completion claim, and every handoff
-        (with its context snapshot) for one task.
+        Returns injection details (including the task's current owner, if
+        any), the most recent acceptance record (or an explicit null if
+        none exists), every completion claim, and every handoff (with its
+        context snapshot) for one task.
       parameters:
         - name: taskId
           in: path
@@ -267,6 +270,7 @@ components:
         - injectedBy
         - authorityScope
         - status
+        - currentOwnerActorId
         - createdAt
       properties:
         id:
@@ -282,6 +286,12 @@ components:
           type: ["string", "null"]
         status:
           $ref: "#/components/schemas/TaskStatus"
+        currentOwnerActorId:
+          description: >-
+            The actor who currently holds accepted ownership of this task,
+            or null if no one currently does (never accepted yet, or
+            handed off and not yet re-accepted).
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time

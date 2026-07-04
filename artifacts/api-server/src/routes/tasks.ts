@@ -78,27 +78,22 @@ router.post("/tasks/:taskId/accept", async (req, res): Promise<void> => {
     return;
   }
 
-  const [existingAcceptance] = await db
-    .select()
-    .from(taskAcceptancesTable)
-    .where(eq(taskAcceptancesTable.taskId, taskId));
-
-  if (existingAcceptance) {
-    req.log.warn(
-      { taskId, existingActorId: existingAcceptance.actorId, attemptedActorId: actorId },
-      "Rejected duplicate task acceptance attempt",
-    );
-    res.status(409).json({
-      error:
-        existingAcceptance.actorId === actorId
-          ? `Task ${taskId} was already accepted by ${actorId}`
-          : `Task ${taskId} was already accepted by ${existingAcceptance.actorId}; ` +
-            `${actorId} cannot accept it`,
-    });
-    return;
-  }
-
+  // Atomic ownership claim: a single conditional UPDATE that only succeeds
+  // if no one currently holds ownership. This is the race-condition-proof
+  // equivalent of the old unique constraint — there is no separate
+  // read-then-write step, so two concurrent accept attempts cannot both
+  // "see" a null owner and both proceed to write.
   const acceptance = await db.transaction(async (tx) => {
+    const claimed = await tx
+      .update(tasksTable)
+      .set({ status: "accepted", currentOwnerActorId: actorId })
+      .where(and(eq(tasksTable.id, taskId), isNull(tasksTable.currentOwnerActorId)))
+      .returning({ id: tasksTable.id });
+
+    if (claimed.length !== 1) {
+      return null;
+    }
+
     const [row] = await tx
       .insert(taskAcceptancesTable)
       .values({
@@ -108,10 +103,24 @@ router.post("/tasks/:taskId/accept", async (req, res): Promise<void> => {
       })
       .returning();
 
-    await tx.update(tasksTable).set({ status: "accepted" }).where(eq(tasksTable.id, taskId));
-
     return row;
   });
+
+  if (!acceptance) {
+    const [current] = await db.select().from(tasksTable).where(eq(tasksTable.id, taskId));
+    req.log.warn(
+      { taskId, currentOwnerActorId: current?.currentOwnerActorId, attemptedActorId: actorId },
+      "Rejected task acceptance attempt: task already has a current owner",
+    );
+    res.status(409).json({
+      error:
+        current?.currentOwnerActorId === actorId
+          ? `Task ${taskId} is already owned by ${actorId}`
+          : `Task ${taskId} is already owned by ${current?.currentOwnerActorId}; ` +
+            `${actorId} cannot accept it`,
+    });
+    return;
+  }
 
   res.status(201).json(AcceptTaskResponse.parse(acceptance));
 });
@@ -145,6 +154,30 @@ router.post("/tasks/:taskId/complete", async (req, res): Promise<void> => {
   const [actor] = await db.select().from(actorsTable).where(eq(actorsTable.id, actorId));
   if (!actor) {
     res.status(404).json({ error: `Actor ${actorId} not found` });
+    return;
+  }
+
+  if (task.currentOwnerActorId === null) {
+    req.log.warn(
+      { taskId, attemptedActorId: actorId },
+      "Rejected report_completion: task has no current owner",
+    );
+    res.status(409).json({
+      error: `Task ${taskId} has no current owner; ${actorId} must call accept_task first`,
+    });
+    return;
+  }
+
+  if (task.currentOwnerActorId !== actorId) {
+    req.log.warn(
+      { taskId, currentOwnerActorId: task.currentOwnerActorId, attemptedActorId: actorId },
+      "Rejected report_completion: caller is not the current owner",
+    );
+    res.status(403).json({
+      error:
+        `Task ${taskId} is currently owned by ${task.currentOwnerActorId}; ` +
+        `${actorId} cannot report completion`,
+    });
     return;
   }
 
@@ -207,6 +240,19 @@ router.post("/tasks/:taskId/handoff", async (req, res): Promise<void> => {
         throw new Error(`Task ${taskId} not found`);
       }
 
+      if (task.currentOwnerActorId === null) {
+        throw new Error(
+          `Task ${taskId} has no current owner; ${fromActorId} cannot hand it off`,
+        );
+      }
+
+      if (task.currentOwnerActorId !== fromActorId) {
+        throw new Error(
+          `Task ${taskId} is currently owned by ${task.currentOwnerActorId}, not ${fromActorId}; ` +
+            `handoff rejected`,
+        );
+      }
+
       const [latestAcceptance] = await tx
         .select()
         .from(taskAcceptancesTable)
@@ -261,14 +307,21 @@ router.post("/tasks/:taskId/handoff", async (req, res): Promise<void> => {
         })
         .returning();
 
-      await tx.update(tasksTable).set({ status: "transitioned" }).where(eq(tasksTable.id, taskId));
+      await tx
+        .update(tasksTable)
+        .set({ status: "transitioned", currentOwnerActorId: null })
+        .where(eq(tasksTable.id, taskId));
 
       return row;
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to capture context snapshot";
-    req.log.error({ err, taskId }, "Rejected handoff: could not capture context snapshot");
-    const status = message.startsWith(`Task ${taskId} not found`) ? 404 : 400;
+    req.log.warn({ err, taskId, fromActorId }, "Rejected handoff");
+    const status = message.startsWith(`Task ${taskId} not found`)
+      ? 404
+      : message.includes("cannot hand it off") || message.includes("handoff rejected")
+        ? 403
+        : 400;
     res.status(status).json({ error: message });
     return;
   }
@@ -285,17 +338,14 @@ router.get("/tasks/unaccepted", async (req, res): Promise<void> => {
 
   const { actorId } = query.data;
 
-  const rows = await db
-    .select({ task: tasksTable })
+  const tasks = await db
+    .select()
     .from(tasksTable)
-    .leftJoin(taskAcceptancesTable, eq(taskAcceptancesTable.taskId, tasksTable.id))
     .where(
       actorId
-        ? and(isNull(taskAcceptancesTable.id), eq(tasksTable.injectedBy, actorId))
-        : isNull(taskAcceptancesTable.id),
+        ? and(isNull(tasksTable.currentOwnerActorId), eq(tasksTable.injectedBy, actorId))
+        : isNull(tasksTable.currentOwnerActorId),
     );
-
-  const tasks = rows.map((row) => row.task);
 
   res.status(200).json(ListUnacceptedTasksResponse.parse({ tasks }));
 });
@@ -318,7 +368,9 @@ router.get("/tasks/:taskId/status", async (req, res): Promise<void> => {
   const [acceptance] = await db
     .select()
     .from(taskAcceptancesTable)
-    .where(eq(taskAcceptancesTable.taskId, taskId));
+    .where(eq(taskAcceptancesTable.taskId, taskId))
+    .orderBy(desc(taskAcceptancesTable.acceptedAt))
+    .limit(1);
 
   const completions = await db
     .select()
