@@ -87,6 +87,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /tasks/{taskId}/complete:
+    post:
+      operationId: reportCompletion
+      tags: [tasks]
+      summary: Report a task completion
+      description: >-
+        Creates a task_completions row. provenance must be exactly one of
+        observed, reviewed, or reported — no other value, casing, or missing
+        value is accepted. The call is rejected outright (no row created) if
+        provenance is missing or invalid. On success, the task's status
+        moves to completed.
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskCompletionInput"
+      responses:
+        "201":
+          description: Completion recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskCompletion"
+        "400":
+          description: Missing or invalid provenance, or other invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Task or actor not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -188,4 +231,55 @@ components:
       properties:
         error:
           type: string
+    Provenance:
+      type: string
+      enum:
+        - observed
+        - reviewed
+        - reported
+    TaskCompletionInput:
+      type: object
+      required:
+        - actorId
+        - provenance
+        - claimText
+      properties:
+        actorId:
+          type: string
+          minLength: 1
+        provenance:
+          $ref: "#/components/schemas/Provenance"
+        claimText:
+          type: string
+          minLength: 1
+        sourceReference:
+          type: ["string", "null"]
+    TaskCompletion:
+      type: object
+      required:
+        - id
+        - taskId
+        - actorId
+        - provenance
+        - claimText
+        - sourceReference
+        - reportedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        actorId:
+          type: string
+        provenance:
+          $ref: "#/components/schemas/Provenance"
+        claimText:
+          type: string
+        sourceReference:
+          type: ["string", "null"]
+        reportedAt:
+          type: string
+          format: date-time
 

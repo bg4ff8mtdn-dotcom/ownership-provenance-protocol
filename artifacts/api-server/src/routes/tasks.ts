@@ -1,12 +1,15 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, tasksTable, actorsTable, taskAcceptancesTable } from "@workspace/db";
+import { db, tasksTable, actorsTable, taskAcceptancesTable, taskCompletionsTable } from "@workspace/db";
 import {
   CreateTaskBody,
   CreateTaskResponse,
   AcceptTaskParams,
   AcceptTaskBody,
   AcceptTaskResponse,
+  ReportCompletionParams,
+  ReportCompletionBody,
+  ReportCompletionResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -97,6 +100,58 @@ router.post("/tasks/:taskId/accept", async (req, res): Promise<void> => {
   });
 
   res.status(201).json(AcceptTaskResponse.parse(acceptance));
+});
+
+router.post("/tasks/:taskId/complete", async (req, res): Promise<void> => {
+  const params = ReportCompletionParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsed = ReportCompletionBody.safeParse(req.body);
+  if (!parsed.success) {
+    req.log.warn(
+      { errors: parsed.error.message },
+      "Rejected report_completion: missing or invalid provenance (or other invalid input)",
+    );
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { taskId } = params.data;
+  const { actorId, provenance, claimText, sourceReference } = parsed.data;
+
+  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, taskId));
+  if (!task) {
+    res.status(404).json({ error: `Task ${taskId} not found` });
+    return;
+  }
+
+  const [actor] = await db.select().from(actorsTable).where(eq(actorsTable.id, actorId));
+  if (!actor) {
+    res.status(404).json({ error: `Actor ${actorId} not found` });
+    return;
+  }
+
+  const completion = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(taskCompletionsTable)
+      .values({
+        taskId,
+        actorId,
+        provenance,
+        claimText,
+        sourceReference: sourceReference ?? null,
+      })
+      .returning();
+
+    await tx.update(tasksTable).set({ status: "completed" }).where(eq(tasksTable.id, taskId));
+
+    return row;
+  });
+
+  res.status(201).json(ReportCompletionResponse.parse(completion));
 });
 
 export default router;

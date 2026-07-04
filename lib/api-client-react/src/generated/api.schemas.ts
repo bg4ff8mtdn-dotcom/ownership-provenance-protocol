@@ -62,3 +62,33 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type Provenance = typeof Provenance[keyof typeof Provenance];
+
+
+export const Provenance = {
+  observed: 'observed',
+  reviewed: 'reviewed',
+  reported: 'reported',
+} as const;
+
+export interface TaskCompletionInput {
+  /** @minLength 1 */
+  actorId: string;
+  provenance: Provenance;
+  /** @minLength 1 */
+  claimText: string;
+  /** @nullable */
+  sourceReference?: string | null;
+}
+
+export interface TaskCompletion {
+  id: string;
+  taskId: string;
+  actorId: string;
+  provenance: Provenance;
+  claimText: string;
+  /** @nullable */
+  sourceReference: string | null;
+  reportedAt: string;
+}
+

@@ -68,3 +68,33 @@ export const AcceptTaskResponse = zod.object({
 })
 
 
+/**
+ * Creates a task_completions row. provenance must be exactly one of observed, reviewed, or reported — no other value, casing, or missing value is accepted. The call is rejected outright (no row created) if provenance is missing or invalid. On success, the task's status moves to completed.
+ * @summary Report a task completion
+ */
+export const ReportCompletionParams = zod.object({
+  "taskId": zod.coerce.string().uuid()
+})
+
+
+
+
+
+export const ReportCompletionBody = zod.object({
+  "actorId": zod.string().min(1),
+  "provenance": zod.enum(['observed', 'reviewed', 'reported']),
+  "claimText": zod.string().min(1),
+  "sourceReference": zod.string().nullish()
+})
+
+export const ReportCompletionResponse = zod.object({
+  "id": zod.string().uuid(),
+  "taskId": zod.string().uuid(),
+  "actorId": zod.string(),
+  "provenance": zod.enum(['observed', 'reviewed', 'reported']),
+  "claimText": zod.string(),
+  "sourceReference": zod.string().nullable(),
+  "reportedAt": zod.coerce.date()
+})
+
+

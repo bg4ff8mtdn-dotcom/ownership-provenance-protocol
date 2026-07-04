@@ -25,6 +25,8 @@ import type {
   Task,
   TaskAcceptance,
   TaskAcceptanceInput,
+  TaskCompletion,
+  TaskCompletionInput,
   TaskInput
 } from './api.schemas';
 
@@ -274,5 +276,77 @@ export const useAcceptTask = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getAcceptTaskMutationOptions(options));
+    }
+
+export const getReportCompletionUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/complete`
+}
+
+/**
+ * Creates a task_completions row. provenance must be exactly one of observed, reviewed, or reported — no other value, casing, or missing value is accepted. The call is rejected outright (no row created) if provenance is missing or invalid. On success, the task's status moves to completed.
+ * @summary Report a task completion
+ */
+export const reportCompletion = async (taskId: string,
+    taskCompletionInput: TaskCompletionInput, options?: RequestInit): Promise<TaskCompletion> => {
+
+  return customFetch<TaskCompletion>(getReportCompletionUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(taskCompletionInput)
+  }
+);}
+
+
+
+
+export const getReportCompletionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportCompletion>>, TError,{taskId: string;data: BodyType<TaskCompletionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportCompletion>>, TError,{taskId: string;data: BodyType<TaskCompletionInput>}, TContext> => {
+
+const mutationKey = ['reportCompletion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportCompletion>>, {taskId: string;data: BodyType<TaskCompletionInput>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  reportCompletion(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportCompletionMutationResult = NonNullable<Awaited<ReturnType<typeof reportCompletion>>>
+    export type ReportCompletionMutationBody = BodyType<TaskCompletionInput>
+    export type ReportCompletionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Report a task completion
+ */
+export const useReportCompletion = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportCompletion>>, TError,{taskId: string;data: BodyType<TaskCompletionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportCompletion>>,
+        TError,
+        {taskId: string;data: BodyType<TaskCompletionInput>},
+        TContext
+      > => {
+      return useMutation(getReportCompletionMutationOptions(options));
     }
 

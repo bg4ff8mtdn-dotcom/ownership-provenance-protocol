@@ -8,8 +8,11 @@
 
 export * from './errorResponse';
 export * from './healthStatus';
+export * from './provenance';
 export * from './task';
 export * from './taskAcceptance';
 export * from './taskAcceptanceInput';
+export * from './taskCompletion';
+export * from './taskCompletionInput';
 export * from './taskInput';
 export * from './taskStatus';
