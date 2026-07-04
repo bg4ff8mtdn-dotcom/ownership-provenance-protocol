@@ -130,6 +130,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /tasks/{taskId}/handoff:
+    post:
+      operationId: handoffTask
+      tags: [tasks]
+      summary: Hand off a task to another actor
+      description: >-
+        Creates a task_handoffs row capturing a context_snapshot (the task's
+        current status, its latest acceptance record, and its latest
+        completion claim if one exists) at the exact moment of the call. If
+        the snapshot cannot be captured for any reason, the handoff is
+        rejected outright and no row is created.
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskHandoffInput"
+      responses:
+        "201":
+          description: Handoff recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskHandoff"
+        "400":
+          description: Invalid input, or context snapshot could not be captured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Task or actor not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -282,4 +325,47 @@ components:
         reportedAt:
           type: string
           format: date-time
+    TaskHandoffInput:
+      type: object
+      required:
+        - fromActorId
+        - toActorId
+      properties:
+        fromActorId:
+          type: string
+          minLength: 1
+        toActorId:
+          type: string
+          minLength: 1
+        reason:
+          type: ["string", "null"]
+    TaskHandoff:
+      type: object
+      required:
+        - id
+        - taskId
+        - fromActorId
+        - toActorId
+        - handoffAt
+        - reason
+        - contextSnapshot
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        fromActorId:
+          type: ["string", "null"]
+        toActorId:
+          type: string
+        handoffAt:
+          type: string
+          format: date-time
+        reason:
+          type: ["string", "null"]
+        contextSnapshot:
+          type: object
+          additionalProperties: true
 

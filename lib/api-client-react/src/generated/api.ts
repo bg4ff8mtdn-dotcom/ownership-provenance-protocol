@@ -27,6 +27,8 @@ import type {
   TaskAcceptanceInput,
   TaskCompletion,
   TaskCompletionInput,
+  TaskHandoff,
+  TaskHandoffInput,
   TaskInput
 } from './api.schemas';
 
@@ -348,5 +350,77 @@ export const useReportCompletion = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getReportCompletionMutationOptions(options));
+    }
+
+export const getHandoffTaskUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/handoff`
+}
+
+/**
+ * Creates a task_handoffs row capturing a context_snapshot (the task's current status, its latest acceptance record, and its latest completion claim if one exists) at the exact moment of the call. If the snapshot cannot be captured for any reason, the handoff is rejected outright and no row is created.
+ * @summary Hand off a task to another actor
+ */
+export const handoffTask = async (taskId: string,
+    taskHandoffInput: TaskHandoffInput, options?: RequestInit): Promise<TaskHandoff> => {
+
+  return customFetch<TaskHandoff>(getHandoffTaskUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(taskHandoffInput)
+  }
+);}
+
+
+
+
+export const getHandoffTaskMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof handoffTask>>, TError,{taskId: string;data: BodyType<TaskHandoffInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof handoffTask>>, TError,{taskId: string;data: BodyType<TaskHandoffInput>}, TContext> => {
+
+const mutationKey = ['handoffTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof handoffTask>>, {taskId: string;data: BodyType<TaskHandoffInput>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  handoffTask(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HandoffTaskMutationResult = NonNullable<Awaited<ReturnType<typeof handoffTask>>>
+    export type HandoffTaskMutationBody = BodyType<TaskHandoffInput>
+    export type HandoffTaskMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Hand off a task to another actor
+ */
+export const useHandoffTask = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof handoffTask>>, TError,{taskId: string;data: BodyType<TaskHandoffInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof handoffTask>>,
+        TError,
+        {taskId: string;data: BodyType<TaskHandoffInput>},
+        TContext
+      > => {
+      return useMutation(getHandoffTaskMutationOptions(options));
     }
 

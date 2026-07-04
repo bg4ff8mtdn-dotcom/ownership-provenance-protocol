@@ -14,5 +14,8 @@ export * from './taskAcceptance';
 export * from './taskAcceptanceInput';
 export * from './taskCompletion';
 export * from './taskCompletionInput';
+export * from './taskHandoff';
+export * from './taskHandoffContextSnapshot';
+export * from './taskHandoffInput';
 export * from './taskInput';
 export * from './taskStatus';

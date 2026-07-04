@@ -92,3 +92,26 @@ export interface TaskCompletion {
   reportedAt: string;
 }
 
+export interface TaskHandoffInput {
+  /** @minLength 1 */
+  fromActorId: string;
+  /** @minLength 1 */
+  toActorId: string;
+  /** @nullable */
+  reason?: string | null;
+}
+
+export type TaskHandoffContextSnapshot = { [key: string]: unknown };
+
+export interface TaskHandoff {
+  id: string;
+  taskId: string;
+  /** @nullable */
+  fromActorId: string | null;
+  toActorId: string;
+  handoffAt: string;
+  /** @nullable */
+  reason: string | null;
+  contextSnapshot: TaskHandoffContextSnapshot;
+}
+

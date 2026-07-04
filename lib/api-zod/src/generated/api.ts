@@ -98,3 +98,32 @@ export const ReportCompletionResponse = zod.object({
 })
 
 
+/**
+ * Creates a task_handoffs row capturing a context_snapshot (the task's current status, its latest acceptance record, and its latest completion claim if one exists) at the exact moment of the call. If the snapshot cannot be captured for any reason, the handoff is rejected outright and no row is created.
+ * @summary Hand off a task to another actor
+ */
+export const HandoffTaskParams = zod.object({
+  "taskId": zod.coerce.string().uuid()
+})
+
+
+
+
+
+export const HandoffTaskBody = zod.object({
+  "fromActorId": zod.string().min(1),
+  "toActorId": zod.string().min(1),
+  "reason": zod.string().nullish()
+})
+
+export const HandoffTaskResponse = zod.object({
+  "id": zod.string().uuid(),
+  "taskId": zod.string().uuid(),
+  "fromActorId": zod.string().nullable(),
+  "toActorId": zod.string(),
+  "handoffAt": zod.coerce.date(),
+  "reason": zod.string().nullable(),
+  "contextSnapshot": zod.record(zod.string(), zod.unknown())
+})
+
+
