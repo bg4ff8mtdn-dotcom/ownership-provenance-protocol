@@ -43,3 +43,28 @@ export const CreateTaskResponse = zod.object({
 })
 
 
+/**
+ * Creates a task_acceptances row and moves the task's status to accepted. Fails if the task already has an acceptance record, regardless of which actor is attempting to accept it — ownership is first-come, first-served and can never be silently overwritten.
+ * @summary Accept a task
+ */
+export const AcceptTaskParams = zod.object({
+  "taskId": zod.coerce.string().uuid()
+})
+
+
+
+
+export const AcceptTaskBody = zod.object({
+  "actorId": zod.string().min(1),
+  "contextNote": zod.string().nullish()
+})
+
+export const AcceptTaskResponse = zod.object({
+  "id": zod.string().uuid(),
+  "taskId": zod.string().uuid(),
+  "actorId": zod.string(),
+  "acceptedAt": zod.coerce.date(),
+  "contextNote": zod.string().nullable()
+})
+
+

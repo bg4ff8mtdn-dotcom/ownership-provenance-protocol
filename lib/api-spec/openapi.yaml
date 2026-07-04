@@ -45,6 +45,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Task"
+  /tasks/{taskId}/accept:
+    post:
+      operationId: acceptTask
+      tags: [tasks]
+      summary: Accept a task
+      description: >-
+        Creates a task_acceptances row and moves the task's status to
+        accepted. Fails if the task already has an acceptance record,
+        regardless of which actor is attempting to accept it — ownership is
+        first-come, first-served and can never be silently overwritten.
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskAcceptanceInput"
+      responses:
+        "201":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskAcceptance"
+        "404":
+          description: Task or actor not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Task already has an acceptance record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -107,4 +149,43 @@ components:
         createdAt:
           type: string
           format: date-time
+    TaskAcceptanceInput:
+      type: object
+      required:
+        - actorId
+      properties:
+        actorId:
+          type: string
+          minLength: 1
+        contextNote:
+          type: ["string", "null"]
+    TaskAcceptance:
+      type: object
+      required:
+        - id
+        - taskId
+        - actorId
+        - acceptedAt
+        - contextNote
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        actorId:
+          type: string
+        acceptedAt:
+          type: string
+          format: date-time
+        contextNote:
+          type: ["string", "null"]
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
 

@@ -20,8 +20,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ErrorResponse,
   HealthStatus,
   Task,
+  TaskAcceptance,
+  TaskAcceptanceInput,
   TaskInput
 } from './api.schemas';
 
@@ -199,5 +202,77 @@ export const useCreateTask = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateTaskMutationOptions(options));
+    }
+
+export const getAcceptTaskUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/accept`
+}
+
+/**
+ * Creates a task_acceptances row and moves the task's status to accepted. Fails if the task already has an acceptance record, regardless of which actor is attempting to accept it — ownership is first-come, first-served and can never be silently overwritten.
+ * @summary Accept a task
+ */
+export const acceptTask = async (taskId: string,
+    taskAcceptanceInput: TaskAcceptanceInput, options?: RequestInit): Promise<TaskAcceptance> => {
+
+  return customFetch<TaskAcceptance>(getAcceptTaskUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(taskAcceptanceInput)
+  }
+);}
+
+
+
+
+export const getAcceptTaskMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptTask>>, TError,{taskId: string;data: BodyType<TaskAcceptanceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptTask>>, TError,{taskId: string;data: BodyType<TaskAcceptanceInput>}, TContext> => {
+
+const mutationKey = ['acceptTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptTask>>, {taskId: string;data: BodyType<TaskAcceptanceInput>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  acceptTask(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptTaskMutationResult = NonNullable<Awaited<ReturnType<typeof acceptTask>>>
+    export type AcceptTaskMutationBody = BodyType<TaskAcceptanceInput>
+    export type AcceptTaskMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Accept a task
+ */
+export const useAcceptTask = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptTask>>, TError,{taskId: string;data: BodyType<TaskAcceptanceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acceptTask>>,
+        TError,
+        {taskId: string;data: BodyType<TaskAcceptanceInput>},
+        TContext
+      > => {
+      return useMutation(getAcceptTaskMutationOptions(options));
     }
 

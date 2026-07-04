@@ -42,3 +42,23 @@ export interface Task {
   createdAt: string;
 }
 
+export interface TaskAcceptanceInput {
+  /** @minLength 1 */
+  actorId: string;
+  /** @nullable */
+  contextNote?: string | null;
+}
+
+export interface TaskAcceptance {
+  id: string;
+  taskId: string;
+  actorId: string;
+  acceptedAt: string;
+  /** @nullable */
+  contextNote: string | null;
+}
+
+export interface ErrorResponse {
+  error: string;
+}
+
