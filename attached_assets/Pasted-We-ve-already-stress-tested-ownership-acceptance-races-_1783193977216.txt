@@ -1,0 +1,44 @@
+We've already stress-tested ownership, acceptance races, snapshot integrity,
+and full history reconstruction thoroughly during the ownership-bug fix. Two
+invariants haven't had a dedicated adversarial test yet — let's close those
+out to finish Phase 7. Test only, do not change any code unless something
+actually fails.
+
+INVARIANT 3 — Every completion claim has exactly one provenance value.
+We've already confirmed missing, invalid-string ("verified"), and
+wrong-case ("Observed") values are all rejected. Now try malformations we
+haven't tried:
+  (a) provenance: null (explicit null, not simply omitted)
+  (b) provenance: [] (an empty array)
+  (c) provenance: ["observed"] (an array containing a valid value)
+  (d) provenance: 1 (a number)
+  (e) provenance: {} (an empty object)
+  (f) provenance: "" (empty string)
+For each, confirm it's rejected with a clear error and that zero rows are
+written to task_completions as a result — check the database directly, not
+just the HTTP response.
+
+INVARIANT 4 — Provenance values never become "more certain" without new
+evidence.
+Test whether an existing completion's provenance can ever be changed after
+the fact without a genuinely new completion event:
+  (a) Is there any update/edit endpoint for an existing task_completions
+      row at all? If yes, can it change provenance on an existing row
+      without creating a new row?
+  (b) Call report_completion a second time on a task that already has a
+      completion (same task_id, different provenance value, e.g. the first
+      call was 'reported' and the second is 'observed'). Does this create
+      a SECOND row in task_completions (acceptable — a new claim is a new
+      event), or does it somehow modify/overwrite the first row's
+      provenance value (a violation)?
+  (c) If a second completion call is currently blocked entirely (e.g.,
+      because the task's status is already 'completed'), confirm that's
+      the actual behavior and report it — that's a design question worth
+      flagging to me (should a task be completable multiple times, once
+      per relevant claim? or is one completion per task the intended
+      model?) rather than something to silently decide on your own.
+
+Report back invariant by invariant: what you tested, what you found, PASS
+or FAIL with database evidence for each. If (c) reveals a genuine design
+ambiguity rather than a bug, flag it clearly as a question for me rather
+than picking an answer yourself.
