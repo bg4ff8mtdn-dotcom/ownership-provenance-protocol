@@ -1,0 +1,46 @@
+We've confirmed two related bugs, and traced them to one root cause: the
+system has no concept of "current owner" that can legitimately change over
+time. Right now, task_acceptances only allows one acceptance row per task
+ever, which blocks the double-acceptance race correctly, but also makes it
+impossible for a new owner to properly accept a task after a legitimate
+handoff — there's no way to re-accept.
+
+Do NOT just add a quick check without fixing the underlying model. Here's
+the design change:
+
+1. Add a concept of CURRENT OWNER to a task, separate from "has this task
+   ever been accepted." Simplest approach: add a nullable column to `tasks`,
+   e.g. `current_owner_actor_id`, that represents who currently holds
+   accepted ownership right now, if anyone.
+
+2. accept_task: on success, set `current_owner_actor_id` to the accepting
+   actor. Keep writing to task_acceptances as an append-only historical
+   log (for Invariant 6 — full reconstructable history) — but the
+   uniqueness rule that blocks double-acceptance should now be based on
+   "is current_owner_actor_id already set to someone else," not "does any
+   row already exist in task_acceptances for this task, period."
+
+3. handoff_task: 
+   a. MUST verify that `from_actor_id` matches the task's current
+      `current_owner_actor_id` exactly. Reject with a clear error if they
+      don't match — this is what closes TEST A's gap.
+   b. On a successful handoff, clear `current_owner_actor_id` back to
+      null. The receiving actor (`to_actor_id`) does NOT automatically
+      become the current owner — they must call accept_task themselves
+      before they can act as owner. This is what closes TEST B's gap.
+
+4. report_completion: MUST verify the calling actor matches the task's
+   current `current_owner_actor_id`. If the task has no current owner
+   (e.g., right after a handoff, before re-acceptance), reject the call —
+   there's no valid owner to attribute the completion to yet.
+
+5. Re-run TEST A and TEST B exactly as before, plus one new test: after a
+   legitimate handoff, confirm the new actor CAN successfully call
+   accept_task (this needs to work now, where it may not have been
+   possible under the old one-row-ever constraint) and only after that
+   succeeds can they call report_completion or hand it off again.
+
+Show me the schema change first before touching the tool logic, and confirm
+existing test data doesn't break — some already-completed tasks in the
+database may need current_owner_actor_id backfilled based on their existing
+task_acceptances row.
