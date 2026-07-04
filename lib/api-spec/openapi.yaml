@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: tasks
+    description: Task operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /tasks:
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create a task
+      description: Creates a task. Status always starts as pending_acceptance.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +54,57 @@ components:
           type: string
       required:
         - status
+    TaskStatus:
+      type: string
+      enum:
+        - pending_acceptance
+        - accepted
+        - in_progress
+        - completed
+        - transitioned
+        - expired
+    TaskInput:
+      type: object
+      required:
+        - title
+        - description
+        - injectedBy
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        injectedBy:
+          type: string
+          minLength: 1
+        authorityScope:
+          type: ["string", "null"]
+    Task:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - injectedBy
+        - authorityScope
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        injectedBy:
+          type: string
+        authorityScope:
+          type: ["string", "null"]
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        createdAt:
+          type: string
+          format: date-time
 
